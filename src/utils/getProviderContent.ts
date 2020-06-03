@@ -1,10 +1,25 @@
+// node的地址管理
 import { join } from 'path';
+
+/**
+ * 用户友好的全局匹配
+ */
 import globby from 'globby';
+/**
+ * NodeJS核心模块扩展 
+ * EOL： 特定于操作系统的行尾标记。
+ * \n on POSIX
+ * \r\n on Windows
+ */
+
 import { EOL } from 'os';
+
+// 正则处理path
 import { winPath } from 'umi-utils';
 
 import { genImports, genModels, genExtraModels, ModelItem, getValidFiles } from './index';
 
+// 获取文件
 function getFiles(cwd: string) {
   return globby
     .sync('./**/*.{ts,tsx,js,jsx}', {
@@ -20,6 +35,7 @@ function getFiles(cwd: string) {
     );
 }
 
+// 获取所有的models
 function getModels(files: string[]) {
   const sortedModels = genModels(files);
   return sortedModels
@@ -27,6 +43,14 @@ function getModels(files: string[]) {
     .join(', ');
 }
 
+// 获取modal的基础信息
+/**
+ * models
+ * importPath： 地址
+ * importName： 名字
+ * namespace： 定义的namespace名称
+ * 
+ */
 function getExtraModels(models: ModelItem[] = []) {
   const extraModels = genExtraModels(models);
   return extraModels
@@ -34,6 +58,7 @@ function getExtraModels(models: ModelItem[] = []) {
     .join(', ');
 }
 
+// 组件成对应的代码： import文件地址
 function getExtraImports(models: ModelItem[] = []) {
   const extraModels = genExtraModels(models);
   return extraModels
@@ -46,6 +71,7 @@ function getExtraImports(models: ModelItem[] = []) {
     .join(EOL);
 }
 
+// 将对应的文件组件成一个js文件
 export default function(modelsDir: string, extra: ModelItem[] = []) {
   const files = getValidFiles(getFiles(modelsDir), modelsDir);
   const imports = genImports(files);

@@ -3,19 +3,23 @@ import { EOL } from 'os';
 import { readFileSync } from 'fs';
 import { winPath } from 'umi-utils';
 
+// JavaScript解析器
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import { Identifier, ArrowFunctionExpression } from '@babel/types';
 
 export type ModelItem = { absPath: string; namespace: string } | string;
 
+// 获取文件的名字
 export const getName = (absPath: string) => path.basename(absPath, path.extname(absPath));
 
+// 地址组装
 export const getPath = (absPath: string) => {
   const info = path.parse(absPath);
   return winPath(path.join(info.dir, info.name).replace(/'/, "'"));
 };
 
+// 组装model
 export const genImports = (imports: string[]) =>
   imports
     .map((ele, index) => `import model${index} from "${winPath(getPath(ele))}";`)
@@ -86,14 +90,30 @@ export const sort = (ns: HookItem[]) => {
 
 export const genModels = (imports: string[]) => {
   const contents = imports.map(absPath => ({
+    // 将文件的名字定义成namespace
     namespace: getName(absPath),
+    // 根据地址获取对应的文件内容
     content: readFileSync(absPath).toString(),
   }));
+
+  // 获取所有的Model
   const allUserModel = imports.map(getName);
 
   const checkDuplicates = (list: string[]) => new Set(list).size !== list.length;
 
   const raw = contents.map((ele, index) => {
+   
+    // 将对应的model的内容转化成ast语法树
+    /**
+     * 通过@babel/parser去解析javascript语法
+     * sourceType：
+     * 1. script： 基于ES6，除开module的导入用script
+     * 2. module：基于ES6导入或导出语句的存在。考虑带有ES6导入和导出的文件（import， export, imports, exports）
+     * 3. unambiguous: 不确定的情况下、使@ babel / parser尝试猜测
+     * defaults： script
+     * 
+     * plugins: 包含要启用的插件的数组
+     */
     const ast = parse(ele.content, {
       sourceType: 'module',
       plugins: ['jsx', 'typescript'],
@@ -101,6 +121,7 @@ export const genModels = (imports: string[]) => {
 
     const use: string[] = [];
 
+    // Babel Traverse模块维护整个树状态，并负责替换，删除和添加节点
     traverse(ast, {
       enter(astPath) {
         if (astPath.isIdentifier({ name: 'useModel' })) {
@@ -116,15 +137,18 @@ export const genModels = (imports: string[]) => {
         }
       },
     });
-
+  
+    // 返回对应的根据文件组装好的model
     return { namespace: ele.namespace, use, importName: `model${index}` };
   });
 
   const models = sort(raw);
 
+  // 验证models中是否有重复的namespace
   if (checkDuplicates(contents.map(ele => ele.namespace))) {
     throw Error('umi: models 中包含重复的 namespace！');
   }
+  // 按照models的namespace做一个排序输出
   return raw.sort((a, b) => models.indexOf(a.namespace) - models.indexOf(b.namespace));
 };
 
@@ -177,6 +201,8 @@ export const isValidHook = (filePath: string) => {
 
   return valid;
 }
+
+//  获取符合条件的文件地址
 
 export const getValidFiles = (files: string[], modelsDir: string) => files.map(file => {
   const filePath = path.join(modelsDir, file);

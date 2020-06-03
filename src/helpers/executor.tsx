@@ -6,6 +6,8 @@ interface ExecutorProps {
   namespace: string;
 }
 
+// 定义的一个执行方法，
+// 设置对应的值
 export default (props: ExecutorProps) => {
   const { hook, onUpdate, namespace } = props;
   try {
